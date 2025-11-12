@@ -110,6 +110,14 @@ static volatile uint32_t randomAddress = 0;
 static volatile uint32_t searchAddress = 0;
 static volatile uint8_t  dali_dtr0 = 0;
 
+static inline uint8_t decode_short_address_from_dtr0(uint8_t dtr0)
+{
+    if (dtr0 & 0x01) {
+        return (uint8_t)((dtr0 >> 1) & 0x3F);
+    }
+    return (uint8_t)(dtr0 & 0x3F);
+}
+
 /* Levels/Curve */
 static volatile uint16_t arc2pwm_lut[255];
 static volatile uint16_t pwm_level = 0;
@@ -475,7 +483,8 @@ static void commissioning_handle(uint8_t adr_byte, uint8_t data_byte)
         case CMD_PROGRAM_SHORT_ADDRESS:
             if (!commissioning_mode) return;
             if (selected && !withdrawn) {
-                dali_short_addr = (uint8_t)(dali_dtr0 & 0x3F);
+                uint8_t new_short_addr = decode_short_address_from_dtr0(dali_dtr0);
+                dali_short_addr = new_short_addr;
                 withdrawn = 1; selected = 0;
                 sa_cell_save(dali_short_addr);
                 params_save_to_flash();
@@ -483,7 +492,9 @@ static void commissioning_handle(uint8_t adr_byte, uint8_t data_byte)
             return;
         case CMD_VERIFY_SHORT_ADDRESS:
             if (!commissioning_mode) return;
-            if ((uint8_t)(dali_dtr0 & 0x3F) == (uint8_t)(dali_short_addr & 0x3F)) dali_send_response(0xFF, half_ticks);
+            if (decode_short_address_from_dtr0(dali_dtr0) == (uint8_t)(dali_short_addr & 0x3F)) {
+                dali_send_response(0xFF, half_ticks);
+            }
             return;
         case CMD_QUERY_SHORT_ADDRESS:
             if (!commissioning_mode) return;
@@ -743,7 +754,8 @@ static void print_and_restart(void)
             uint8_t is_broadcast = (fr.addr_or_adr == 0xFF);
             uint8_t addr_ok      = dali_addr_matches(fr.addr_or_adr);
             if (is_broadcast || addr_ok) {
-                dali_short_addr = (uint8_t)(dali_dtr0 & 0x3F);
+                uint8_t new_short_addr = decode_short_address_from_dtr0(dali_dtr0);
+                dali_short_addr = new_short_addr;
                 withdrawn = 1; selected  = 0;
                 sa_cell_save(dali_short_addr);
                 params_save_to_flash();
