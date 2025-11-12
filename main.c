@@ -112,12 +112,10 @@ static volatile uint8_t  dali_dtr0 = 0;
 
 static inline uint8_t decode_short_address_from_dtr0(uint8_t dtr0)
 {
-    return (uint8_t)((dtr0 >> 1) & 0x3F);
-}
-
-static inline uint8_t encode_short_address_payload(uint8_t short_addr)
-{
-    return (uint8_t)(((short_addr & 0x3F) << 1) | 0x01);
+    if (dtr0 & 0x01) {
+        return (uint8_t)((dtr0 >> 1) & 0x3F);
+    }
+    return (uint8_t)(dtr0 & 0x3F);
 }
 
 /* Levels/Curve */
@@ -500,7 +498,7 @@ static void commissioning_handle(uint8_t adr_byte, uint8_t data_byte)
             return;
         case CMD_QUERY_SHORT_ADDRESS:
             if (!commissioning_mode) return;
-            dali_send_response(encode_short_address_payload((uint8_t)(dali_short_addr & 0x3F)), half_ticks);
+            dali_send_response((uint8_t)(dali_short_addr & 0x3F), half_ticks);
             return;
         default: return;
     }
